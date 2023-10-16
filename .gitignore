@@ -1,0 +1,6 @@
+/static
+/saves
+/extdata
+/node_modules
+/main.db
+.DS_Store
