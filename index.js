@@ -194,9 +194,9 @@ function ensureDirectoryExistence(filePath) {
 // console.log(rows[0].email);
 // }); // , params
 
-app.post(['/uploadSave', '/uploadExtdata'], (req, res) => {
+app.post(['/uploadSaves', '/uploadExtdata'], (req, res) => {
 
-	const isGetSaves = req.originalUrl.startsWith("/uploadSave");
+	const isGetSaves = req.originalUrl.startsWith("/uploadSaves");
 	const folder = isGetSaves ? "saves" : "extdata";
 
 	console.log("Request from " + req.ip);
@@ -436,7 +436,7 @@ app.post("/shorthandToken", (req, res) => {
 
 });
 
-app.post(["/getSaves/:game?", "/getExtdatas/:game?"], (req, res) => {
+app.post(["/getSaves/:game?", "/getExtdata/:game?"], (req, res) => {
 
 	// this is not the best way, but we can overhall it later
 	const isGetSaves = req.originalUrl.startsWith("/getSaves");
@@ -513,7 +513,7 @@ app.post(["/getSaves/:game?", "/getExtdatas/:game?"], (req, res) => {
 
 });
 
-app.use(["/downloadSaves*", "/downloadExtdatas*"], (req, res) => {
+app.use(["/downloadSaves*", "/downloadExtdata*"], (req, res) => {
 	const token = req.body.token;
 	const isGetSaves = req.originalUrl.startsWith("/downloadSaves");
 	const folder = isGetSaves ? "saves" : "extdata";
@@ -521,7 +521,7 @@ app.use(["/downloadSaves*", "/downloadExtdatas*"], (req, res) => {
 	console.log(req.body)
 
 	getUserID(token).then((userID) => {
-		let location = req.originalUrl.split("/downloadSaves/")[1];
+		let location = req.originalUrl.split(isGetSaves ? "/downloadSaves/" : "/downloadExtdata/")[1];
 
 		if (req.body.game || req.body.save || req.body.file) {
 			location = path.join(__dirname, folder, userID, (req.body.game || ""), (req.body.save || ""), (req.body.file || ""));
