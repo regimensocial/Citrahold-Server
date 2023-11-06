@@ -194,6 +194,13 @@ function ensureDirectoryExistence(filePath) {
 // console.log(rows[0].email);
 // }); // , params
 
+app.all("/areyouawake", (req, res) => {
+	console.log("Request from " + req.ip);
+	res.send({
+		yes: "i am awake"
+	});
+});
+
 app.post(['/uploadSaves', '/uploadExtdata'], (req, res) => {
 
 	const isGetSaves = req.originalUrl.startsWith("/uploadSaves");
@@ -252,6 +259,7 @@ app.post(['/uploadSaves', '/uploadExtdata'], (req, res) => {
 			return;
 		});
 	} else {
+		console.log("No data sent.");
 		res.status(400).send({
 			error: "Invalid request. You didn't send any data."
 		});
@@ -261,7 +269,6 @@ app.post(['/uploadSaves', '/uploadExtdata'], (req, res) => {
 
 app.post("/getUserID", (req, res) => {
 	getUserID(req.body.token).then((userID) => {
-		console.log(userID);
 		res.json({
 			userID: userID
 		});
@@ -293,7 +300,7 @@ app.post("/getToken", (req, res) => {
 	// this will be like a login
 	if (req.body.shorthandToken && shorthandTokens[req.body.shorthandToken]) {
 		getToken(shorthandTokens[req.body.shorthandToken][0]).then((token) => {
-			res.send(token);
+			res.send({token});
 			delete shorthandTokens[req.body.shorthandToken];
 		});
 
@@ -319,7 +326,7 @@ app.post("/getToken", (req, res) => {
 
 							if (!req.body.new) {
 								getToken(rows[0].id).then((token) => {
-									res.send(token);
+									res.send({token});
 								});
 							} else {
 
@@ -328,7 +335,7 @@ app.post("/getToken", (req, res) => {
 								// So they'll be logged out on all devices.
 
 								handleToken(rows[0].id).then((token) => {
-									res.send(token);
+									res.send({token});
 								});
 							}
 
@@ -380,7 +387,7 @@ app.post("/register", (req, res) => {
 					executeStatement(sql, params).then(() => {
 
 						handleToken(userID).then((token) => {
-							res.send(token);
+							res.send({token});
 						});
 					}).catch((err) => {
 						res.status(500).send({
@@ -417,7 +424,7 @@ app.post("/shorthandToken", (req, res) => {
 		if (!req.body.empty) {
 			// generate a 5 character shorthand token
 			const shorthandToken = uuidv4().substring(0, 5);
-			res.send(shorthandToken);
+			res.send({shorthandToken});
 
 			var timeout = setTimeout(() => { // in 2 minutes, delete the shorthand token
 				delete shorthandTokens[shorthandToken];
