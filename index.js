@@ -560,7 +560,7 @@ app.use(["/downloadSaves*", "/downloadExtdata*"], (req, res) => {
 		let location = req.originalUrl.split(isGetSaves ? "/downloadSaves/" : "/downloadExtdata/")[1];
 
 		if (req.body.game || req.body.save || req.body.file) {
-			location = path.join(__dirname, folder, userID, (req.body.game || ""), (req.body.save || ""), (req.body.file || ""));
+			location = path.join(__dirname, folder, userID, (req.body.game || ""), (req.body.file || ""));
 			console.log(location)
 		} else {
 			location = decodeURIComponent(location);
