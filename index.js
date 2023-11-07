@@ -209,6 +209,14 @@ app.post(['/uploadSaves', '/uploadExtdata'], (req, res) => {
 	console.log("Request from " + req.ip);
 	console.log(folder);
 
+	if (!req.body.filename || req.body.filename.startsWith(".")) {
+		res.status(400).send({
+			error: "Invalid request. You didn't send a filename."
+		});
+		return;
+	
+	}
+
 	if (req.body.data) {
 		// check if valid base64
 
