@@ -219,6 +219,18 @@ app.post(['/uploadSaves', '/uploadExtdata'], (req, res) => {
 
 		getUserID(req.body.token).then((userID) => {
 
+			if (!path.resolve(
+				__dirname,
+				folder,
+				userID,
+				req.body.filename
+			).startsWith(path.resolve(__dirname, folder, userID))) {
+				res.status(400).send({
+					error: "Stop."
+				});
+				return;
+			}
+
 			try {
 
 				var buf = Buffer.from(req.body.data, 'base64');
@@ -300,7 +312,7 @@ app.post("/getToken", (req, res) => {
 	// this will be like a login
 	if (req.body.shorthandToken && shorthandTokens[req.body.shorthandToken]) {
 		getToken(shorthandTokens[req.body.shorthandToken][0]).then((token) => {
-			res.send({token});
+			res.send({ token });
 			delete shorthandTokens[req.body.shorthandToken];
 		});
 
@@ -326,7 +338,7 @@ app.post("/getToken", (req, res) => {
 
 							if (!req.body.new) {
 								getToken(rows[0].id).then((token) => {
-									res.send({token});
+									res.send({ token });
 								});
 							} else {
 
@@ -335,7 +347,7 @@ app.post("/getToken", (req, res) => {
 								// So they'll be logged out on all devices.
 
 								handleToken(rows[0].id).then((token) => {
-									res.send({token});
+									res.send({ token });
 								});
 							}
 
@@ -387,7 +399,7 @@ app.post("/register", (req, res) => {
 					executeStatement(sql, params).then(() => {
 
 						handleToken(userID).then((token) => {
-							res.send({token});
+							res.send({ token });
 						});
 					}).catch((err) => {
 						res.status(500).send({
@@ -424,7 +436,7 @@ app.post("/shorthandToken", (req, res) => {
 		if (!req.body.empty) {
 			// generate a 5 character shorthand token
 			const shorthandToken = uuidv4().substring(0, 5);
-			res.send({shorthandToken});
+			res.send({ shorthandToken });
 
 			var timeout = setTimeout(() => { // in 2 minutes, delete the shorthand token
 				delete shorthandTokens[shorthandToken];
@@ -459,6 +471,8 @@ app.post(["/getSaves/:game?", "/getExtdata/:game?"], (req, res) => {
 	getUserID(token).then((userID) => {
 		let location = path.resolve(__dirname, folder, userID);
 
+
+
 		// iterate just through the folders in this directory
 		if (!game) {
 			fs.readdir(location, (err, files) => {
@@ -478,6 +492,13 @@ app.post(["/getSaves/:game?", "/getExtdata/:game?"], (req, res) => {
 			});
 		} else {
 			let gameLocation = path.resolve(__dirname, folder, userID, game);
+
+			if (!gameLocation.startsWith(path.resolve(__dirname, folder, userID))) {
+				res.status(400).send({
+					error: "Stop."
+				});
+				return;
+			}
 
 			// check if location is a directory or invalid
 			fs.lstat(gameLocation, (err, stats) => {
@@ -537,6 +558,13 @@ app.use(["/downloadSaves*", "/downloadExtdata*"], (req, res) => {
 			location = decodeURIComponent(location);
 			location = location.split("/");
 			location = path.resolve(__dirname, folder, userID, ...location)
+		}
+
+		if (!location.startsWith(path.resolve(__dirname, folder, userID))) {
+			res.status(400).send({
+				error: "Stop."
+			});
+			return;
 		}
 
 		// check if location is a directory or a file
