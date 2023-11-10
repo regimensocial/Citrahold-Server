@@ -4,3 +4,5 @@
 /node_modules
 /main.db
 .DS_Store
+*.crt
+*.key

@@ -6,9 +6,18 @@ const { v4: uuidv4 } = require('uuid');
 const bcrypt = require('bcrypt');
 const sqlite3 = require('sqlite3').verbose();
 var validator = require("email-validator");
+var cors = require('cors')
+
+var http = require('http');
+var https = require('https');
+var privateKey  = fs.readFileSync('./selfsigned.key', 'utf8');
+var certificate = fs.readFileSync('./selfsigned.crt', 'utf8');
+var credentials = {key: privateKey, cert: certificate};
 
 const { resolve } = require('path');
 const { readdir } = require('fs').promises;
+
+const cookieParser = require('cookie-parser');
 
 async function getFiles(dir) {
 	const dirents = await readdir(dir, { withFileTypes: true });
@@ -154,6 +163,13 @@ function getUserID(token) {
  */
 const BCRYPT_SALT_ROUNDS = 10;
 
+app.use(cors(
+	{
+		origin: ["http://localhost:3000", "http://localhost:3001", "https://localhost:3444"],
+		methods: ["GET", "POST", "OPTIONS", "PUT", "DELETE"],
+		credentials: true,
+	}
+));
 
 app.use(express.json(
 	{
@@ -163,11 +179,14 @@ app.use(express.json(
 
 app.use(express.urlencoded({ extended: true, limit: '1024mb' }))
 
+app.use(cookieParser())
+
 // express static at URL /static
 app.use('/static', express.static(path.resolve(__dirname, 'static')));
 
 // check that if we are receiving data from the user, it is valid JSON
-app.use((err, _req, res, next) => {
+app.use((err, req, res, next) => {
+
 	if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
 
 		return res.status(400).send({
@@ -177,6 +196,22 @@ app.use((err, _req, res, next) => {
 
 	next();
 });
+
+app.use((req, res, next) => {
+	if (!req.body.token && (req.cookies["token"] || req.signedCookies["token"])) {
+		var token = req.cookies["token"] || req.signedCookies["token"];
+		getUserID(token).then((userID) => {
+			req.body.token = token;
+			req.body.userID = userID;
+			next();
+		}).catch((err) => {
+			res.clearCookie("token");
+			next();
+		});
+	} else {
+		next();
+	}
+})
 
 function ensureDirectoryExistence(filePath) {
 	var dirname = path.dirname(filePath);
@@ -214,7 +249,7 @@ app.post(['/uploadSaves', '/uploadExtdata'], (req, res) => {
 			error: "Invalid request. You didn't send a filename."
 		});
 		return;
-	
+
 	}
 
 	if (req.body.data) {
@@ -287,7 +322,9 @@ app.post(['/uploadSaves', '/uploadExtdata'], (req, res) => {
 
 });
 
-app.post("/getUserID", (req, res) => {
+app.all("/getUserID", (req, res) => {
+	console.log(req.cookies, req.body)
+
 	getUserID(req.body.token).then((userID) => {
 		res.json({
 			userID: userID
@@ -296,6 +333,49 @@ app.post("/getUserID", (req, res) => {
 		res.status(401).json({
 			userID: "unknown"
 		});
+	});
+});
+
+// Response.Cookies.Append(
+// 	"whoyouare",
+// 	newSessionID,
+// 	new CookieOptions()
+// 	{
+// 		Path = "/",
+// 		Expires = DateTimeOffset.UtcNow.AddYears(1),
+// 		HttpOnly = true,
+// 		SameSite = cookieOptions.SameSite,
+// 		Secure = Program.secureMode
+// 	}
+// )
+
+app.post("/setTokenCookie", (req, res) => {
+	getUserID(req.body.token).then((userID) => {
+		res.cookie("token", req.body.token, {
+			maxAge: 1000 * 60 * 60 * 24 * 365,
+			httpOnly: true,
+			sameSite: "none",
+			secure: true
+		});
+		res.send({
+			success: true
+		});
+	}).catch((err) => {
+		res.status(401).send({
+			error: "Invalid token."
+		});
+	});
+});
+
+app.all("/deleteTokenCookie", (req, res) => {
+	res.cookie("token", "", { // you can't use clearCookie because it doesn't work with SameSite: None
+		name: "token",
+		sameSite: "none",
+		secure: true,
+		maxAge: 0
+	});
+	res.send({
+		success: true
 	});
 });
 
@@ -368,11 +448,28 @@ app.post("/getToken", (req, res) => {
 
 				} else {
 					return res.status(400).send({
-						error: "Invalid email or password."
+						error: "Account not found."
 					});
 				}
 			});
 		}
+	}
+});
+
+app.post("/checkShorthandTokenExists", (req, res) => {
+	if (!req.body.shorthandToken) {
+		return res.status(400).send({
+			error: "Invalid shorthand token."
+		});	
+	}
+	if (shorthandTokens[req.body.shorthandToken]) {
+		res.send({
+			exists: true
+		});
+	} else {
+		res.send({
+			exists: false
+		});
 	}
 });
 
@@ -614,6 +711,8 @@ app.use(["/downloadSaves*", "/downloadExtdata*"], (req, res) => {
 	});
 })
 
-app.listen(3000, () => {
-	console.log('Example app listening on port 3000!');
-});
+var httpServer = http.createServer(app);
+var httpsServer = https.createServer(credentials, app);
+
+httpServer.listen(3000);
+httpsServer.listen(3443);
