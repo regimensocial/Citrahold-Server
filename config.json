@@ -1,0 +1,11 @@
+{
+    "production": false,
+    "maxUserDirSize": 128000,
+    "verifyEmail": true,
+    "frontEnd": "http://localhost:3001",
+    "passwordResetPage": "/passwordReset.html?",
+    "allowedOrigins": ["http://localhost:3000", "http://localhost:3001", "https://localhost:3444"],
+    "bcryptSaltRounds": 10,
+    "securePort": 3443,
+    "insecurePort": 3000
+}
