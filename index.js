@@ -925,7 +925,7 @@ app.post("/setTokenCookie", (req, res) => {
 		res.cookie("token", req.body.token, {
 			maxAge: 1000 * 60 * 60 * 24 * 365,
 			httpOnly: true,
-			sameSite: "none",
+			sameSite: SERVER_CONFIG.sameSitePolicy,
 			secure: true
 		});
 		res.send({
@@ -941,7 +941,7 @@ app.post("/setTokenCookie", (req, res) => {
 app.all("/deleteTokenCookie", (req, res) => {
 	res.cookie("token", "", { // you can't use clearCookie because it doesn't work with SameSite: None
 		name: "token",
-		sameSite: "none",
+		sameSite: SERVER_CONFIG.sameSitePolicy,
 		secure: true,
 		maxAge: 0
 	});
@@ -1378,7 +1378,7 @@ app.post(["/getSaves/:game?", "/getExtdata/:game?"], (req, res) => {
 	// so we'll also accept the game name as a body parameter
 	var game = req.body.game || req.params.game;
 
-	if (!game || typeof game !== "string") {
+	if (game && typeof game !== "string") {
 		res.status(400).send({
 			error: "Invalid game."
 		});
