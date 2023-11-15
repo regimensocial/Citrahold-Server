@@ -31,8 +31,7 @@ router.all("/areyouawake", async (req, res) => {
         var userInfo = {};
         userInfo["id"] = req.body.userID;
         userInfo["directorySize"] = userDirectorySize;
-
-        // get email
+        
         const sql = "SELECT email FROM user WHERE id = ?";
         const params = [req.body.userID];
 

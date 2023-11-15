@@ -15,13 +15,13 @@ function dirSize(directory) {
 
             exec(command, (error, stdout, stderr) => {
                 if (error) {
-                    console.error(`Error executing command: ${error.message}`);
+                    error(`Error executing command: ${error.message}`);
                     reject(error.message);
                     return;
                 }
 
                 if (stderr) {
-                    console.error(`Command had errors: ${stderr}`);
+                    error(`Command had errors: ${stderr}`);
                     reject(stderr);
                     return;
                 }

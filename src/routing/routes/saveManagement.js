@@ -6,12 +6,12 @@ const fs = require("fs");
 
 const SERVER_CONFIG = require("../../../config.json");
 
-const { CONSTANTS, ROOT_DIRECTORY } = require("../../shared.js");
+const { CONSTANTS, ROOT_DIRECTORY, error } = require("../../shared.js");
 
 const { getUserID } = require("../../userAuthentication");
 const { getUserDataUsage, ensureDirectoryExistence, dirSize, getFiles } = require("../../helpers.js");
 
-router.post(["/uploadSaves", "/uploadExtdata"], (req, res) => {
+router.post([ "/uploadExtdata", "/uploadSaves"], (req, res) => {
 
 	const isGetSaves = req.originalUrl.startsWith("/uploadSaves");
 	const folder = isGetSaves ? "saves" : "extdata";
@@ -38,7 +38,6 @@ router.post(["/uploadSaves", "/uploadExtdata"], (req, res) => {
 	}
 
 	if (req.body.data) {
-		// check if valid base64
 
 		getUserID(req.body.token).then(async (userID) => {
 
@@ -82,7 +81,7 @@ router.post(["/uploadSaves", "/uploadExtdata"], (req, res) => {
 					req.body.filename
 				), buf, "binary", function (err) {
 					if (err) {
-						console.error(err);
+						error(err);
 						res.status(500).send({
 							error: "Something went wrong."
 						});
@@ -92,14 +91,13 @@ router.post(["/uploadSaves", "/uploadExtdata"], (req, res) => {
 							success: true,
 							message: "The file was saved! Thank you"
 						});
-
-						// get top level dir of req.body.filename
+						
 						var game = req.body.filename.split("/")[0];
 						var gameDir = path.resolve(ROOT_DIRECTORY, folder, userID, game);
 						var currentDate = new Date();
 						fs.utimes(gameDir, fs.statSync(gameDir).mtime, currentDate, (err) => {
 							if (err) {
-								console.error(err);
+								error(err);
 							}
 						});
 					}
@@ -134,9 +132,7 @@ router.post(["/getSaves/:game?", "/getExtdata/:game?"], (req, res) => {
 		});
 		return;
 	}
-
-	// 3DS has trouble sending fancy unicode characters as URI
-	// so we'll also accept the game name as a body parameter
+	
 	var game = req.body.game || req.params.game;
 
 	if (game && typeof game !== "string") {
@@ -148,8 +144,7 @@ router.post(["/getSaves/:game?", "/getExtdata/:game?"], (req, res) => {
 
 	getUserID(token).then((userID) => {
 		const location = path.resolve(ROOT_DIRECTORY, folder, userID);
-
-		// iterate just through the folders in this directory
+		
 		if (!game) {
 			fs.readdir(location, async (err, files) => {
 				if (err) {
@@ -191,8 +186,7 @@ router.post(["/getSaves/:game?", "/getExtdata/:game?"], (req, res) => {
 				});
 				return;
 			}
-
-			// check if location is a directory or invalid
+			
 			fs.lstat(gameLocation, (err, stats) => {
 				if (err) {
 					res.status(404).send({
@@ -275,7 +269,7 @@ router.post(["/deleteSaves/:game?", "/deleteExtdata/:game?"], (req, res) => {
 				force: true
 			}, (err) => {
 				if (err) {
-					console.error(err);
+					error(err);
 					res.status(500).send({
 						error: "Something went wrong."
 					});
@@ -290,7 +284,7 @@ router.post(["/deleteSaves/:game?", "/deleteExtdata/:game?"], (req, res) => {
 
 		}
 	}).catch((err) => {
-		console.error(err);
+		error(err);
 		res.status(401).send({
 			error: "Invalid token."
 		});
@@ -349,7 +343,7 @@ router.post(["/renameSaves", "/renameExtdata"], (req, res) => {
 
 			fs.rename(gameLocation, path.resolve(ROOT_DIRECTORY, folder, userID, newGame), (err) => {
 				if (err) {
-					console.error(err);
+					error(err);
 					res.status(500).send({
 						error: "Something went wrong."
 					});
@@ -364,7 +358,7 @@ router.post(["/renameSaves", "/renameExtdata"], (req, res) => {
 
 		}
 	}).catch((err) => {
-		console.error(err);
+		error(err);
 		res.status(401).send({
 			error: "Invalid token."
 		});
@@ -410,8 +404,6 @@ router.use(["/downloadSaves*", "/downloadExtdata*"], (req, res) => {
 			return;
 		}
 
-		// check if location is a directory or a file
-
 		fs.lstat(location, (err, stats) => {
 			if (err) {
 				res.status(404).send({
@@ -432,8 +424,7 @@ router.use(["/downloadSaves*", "/downloadExtdata*"], (req, res) => {
 							});
 
 						})
-						.catch(e => console.error(e));
-					// }
+						.catch(e => error(e));
 
 				} else {
 					res.download(location);

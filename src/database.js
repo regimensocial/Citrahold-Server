@@ -1,6 +1,6 @@
 const sqlite3 = require("sqlite3").verbose();
 const path = require("path");
-const { ROOT_DIRECTORY } = require("./shared");
+const { ROOT_DIRECTORY, error } = require("./shared");
 
 async function executeStatement(sql, params = []) {
 
@@ -18,7 +18,7 @@ async function executeStatement(sql, params = []) {
             });
 
         } catch (err) {
-            console.error(err);
+            error(err);
             reject(err);
 
         } finally {

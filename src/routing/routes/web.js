@@ -31,7 +31,7 @@ router.post("/setTokenCookie", (req, res) => {
 });
 
 router.all("/deleteTokenCookie", (req, res) => {
-	res.cookie("token", "", { // you can't use clearCookie because it doesn't work with SameSite: None
+	res.cookie("token", "", { 
 		name: "token",
 		sameSite: SERVER_CONFIG.sameSitePolicy,
 		secure: true,

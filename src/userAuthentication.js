@@ -2,39 +2,29 @@ const SERVER_CONFIG = require("../config.json");
 const { query, executeStatement } = require("./database");
 const { v4: uuidv4 } = require("uuid");
 const bcrypt = require("bcrypt");
+const { error } = require("./shared");
 
 function checkIfEmailIsVerified(userID) {
 
     return new Promise((resolve, reject) => {
 
-        if (!SERVER_CONFIG.verifyEmail) {
-            resolve(true);
-            return;
-        }
-
         const sql = "SELECT verified FROM user WHERE id = ?";
         const params = [userID];
 
         query(sql, params).then((rows) => {
-            console.log(rows);
             if (rows.length > 0) {
                 (rows[0].verified === 1) ? resolve(true) : reject("Email not verified.");
             } else {
                 reject("Invalid userID.");
             }
         }).catch((err) => {
-            console.error(err);
+            error(err);
             reject(err);
         });
     });
 
 }
 
-/**
- * Generates a new token for the given user ID  (and deletes any existing tokens).
- * @param {number} userID - The ID of the user for whom to generate a new token.
- * @returns {Promise<string>} - A Promise that resolves with the newly generated token.
- */
 function handleToken(userID) {
 
     return new Promise((resolve, reject) => {
@@ -54,16 +44,16 @@ function handleToken(userID) {
                 executeStatement(sql, params).then(() => {
                     resolve(token);
                 }).catch((err) => {
-                    console.error(err);
+                    error(err);
                     reject(err);
                 });
 
             }).catch((err) => {
-                console.error(err);
+                error(err);
                 reject(err);
             });
         }).catch((err) => {
-            console.error(err);
+            error(err);
             reject(err);
         });
 
@@ -73,8 +63,7 @@ function handleToken(userID) {
 function getToken(userID) {
 
     return new Promise((resolve, reject) => {
-
-        // check user exists
+        
         const sql = "SELECT id FROM user WHERE id = ?";
         const params = [userID];
         query(sql, params).then((rows) => {
@@ -86,23 +75,23 @@ function getToken(userID) {
                     if (rows.length > 0) {
                         resolve(rows[0].token);
                     } else {
-                        // generate new token
+                        
                         handleToken(userID).then((token) => {
                             resolve(token);
                         }).catch((err) => {
-                            console.error(err);
+                            error(err);
                             reject(err);
                         });
                     }
                 }).catch((err) => {
-                    console.error(err);
+                    error(err);
                     reject(err);
                 });
             } else {
                 reject("Invalid userID.");
             }
         }).catch((err) => {
-            console.error(err);
+            error(err);
             reject(err);
         });
     });
@@ -121,7 +110,7 @@ function getUserID(token) {
                 reject("Invalid token.");
             }
         }).catch((err) => {
-            console.error(err);
+            error(err);
             reject(err);
         });
     });
@@ -138,7 +127,7 @@ function changePassword(userID, newPassword) {
             executeStatement(sql, params).then(() => {
                 resolve(true);
             }).catch((err) => {
-                console.error(err);
+                error(err);
                 reject(err);
             });
         });
@@ -158,7 +147,7 @@ function getUserIDFromEmail(email) {
                 reject("Invalid email.");
             }
         }).catch((err) => {
-            console.error(err);
+            error(err);
             reject(err);
         });
     });
@@ -167,15 +156,12 @@ function getUserIDFromEmail(email) {
 
 function userIsNotResettingEmail(userID) {
 
-    // check if their password is null
-
     return new Promise((resolve, reject) => {
         const sql = "SELECT hash FROM user WHERE id = ?";
         const params = [userID];
 
         query(sql, params).then((rows) => {
             if (rows.length > 0) {
-                console.log(rows);
                 if (rows[0].hash === null) {
                     reject(false);
                 } else {
@@ -185,7 +171,7 @@ function userIsNotResettingEmail(userID) {
                 reject("Invalid userID.");
             }
         }).catch((err) => {
-            console.error(err);
+            error(err);
             reject(err);
         });
 

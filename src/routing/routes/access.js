@@ -8,7 +8,7 @@ const SERVER_CONFIG = require("../../../config.json");
 
 const { v4: uuidv4 } = require("uuid");
 
-const { CONSTANTS } = require("../../shared.js");
+const { CONSTANTS, error } = require("../../shared.js");
 
 const { shorthandTokens } = require("../../shared.js");
 const { getUserID, getToken, checkIfEmailIsVerified, handleToken } = require("../../userAuthentication");
@@ -17,7 +17,6 @@ const { sendVerificationEmail, sendPasswordResetEmail } = require("../../emailFu
 const { generateRandomNumberString } = require("../../helpers");
 
 router.post("/register", (req, res) => {
-	// for now, just insert into database
 
 	let email = req.body.email;
 	const password = req.body.password;
@@ -38,7 +37,7 @@ router.post("/register", (req, res) => {
 
 		email = email.toLowerCase();
 
-		const queryString = "SELECT id FROM user WHERE email = ?"; // WHERE id = ?
+		const queryString = "SELECT id FROM user WHERE email = ?"; 
 		const queryParams = [email];
 
 		query(queryString, queryParams).then((rows) => {
@@ -50,13 +49,11 @@ router.post("/register", (req, res) => {
 			} else {
 				bcrypt.hash(password,
 					SERVER_CONFIG.bcryptSaltRounds).then((hashedPassword) => {
-					let sql = "INSERT INTO user (email, hash, timestamp, id, verified) VALUES (?, ?, ?, ?, ?)";
-					const userID = uuidv4();
-					let params = [email, hashedPassword, Date.now(), userID, (SERVER_CONFIG.verifyEmail ? 0 : 1)];
+						let sql = "INSERT INTO user (email, hash, timestamp, id, verified) VALUES (?, ?, ?, ?, ?)";
+						const userID = uuidv4();
+						let params = [email, hashedPassword, Date.now(), userID, 0];
 
-					executeStatement(sql, params).then(() => {
-
-						if (SERVER_CONFIG.verifyEmail) {
+						executeStatement(sql, params).then(() => {
 
 							sql = "INSERT INTO verification (userID, id, timestamp) VALUES (?, ?, ?)";
 							params = [userID, generateRandomNumberString(6), Date.now()];
@@ -70,24 +67,19 @@ router.post("/register", (req, res) => {
 									note: "This account must be verified before it can be used."
 								});
 							}).catch((err) => {
-								console.error(err);
+								error(err);
 								res.status(500).send({
 									error: "Something went wrong."
 								});
 							});
 
-						} else {
-							handleToken(userID).then((token) => {
-								res.send({ token });
+						}).catch((err) => {
+							error(err);
+							res.status(500).send({
+								error: "Something went wrong."
 							});
-						}
-					}).catch((err) => {
-						console.error(err);
-						res.status(500).send({
-							error: "Something went wrong."
 						});
 					});
-				});
 			}
 		});
 	}
@@ -113,7 +105,7 @@ router.all("/getUserID", (req, res) => {
 });
 
 router.post("/getToken", (req, res) => {
-	// this will be like a login
+	
 	if (
 		req.body.shorthandToken &&
 		typeof req.body.shorthandToken === "string" &&
@@ -123,8 +115,6 @@ router.post("/getToken", (req, res) => {
 		getToken(shorthandTokens[req.body.shorthandToken][0]).then((token) => {
 			res.send({ token });
 
-			// if shorthand token is 7 characters long, delete the user's password hash
-
 			if (req.body.shorthandToken.length === 7) {
 				const userID = shorthandTokens[req.body.shorthandToken][0];
 
@@ -132,7 +122,7 @@ router.post("/getToken", (req, res) => {
 				const params = [userID];
 
 				executeStatement(sql, params).then().catch((err) => {
-					console.error(err);
+					error(err);
 				});
 			}
 
@@ -157,7 +147,7 @@ router.post("/getToken", (req, res) => {
 		} else {
 			email = email.toLowerCase();
 
-			let queryString = "SELECT id, hash FROM user WHERE email = ?"; // WHERE id = ?
+			let queryString = "SELECT id, hash FROM user WHERE email = ?"; 
 			let queryParams = [email];
 
 			query(queryString, queryParams).then((rows) => {
@@ -170,7 +160,7 @@ router.post("/getToken", (req, res) => {
 						let userHasAlreadyRequestedPasswordReset = false;
 						Object.keys(shorthandTokens).forEach(shorthandToken => {
 							if (shorthandTokens[shorthandToken][0] === userID) {
-								// if 7 characters long, send error
+								
 								if (shorthandToken.length === 7) {
 									userHasAlreadyRequestedPasswordReset = true;
 									return;
@@ -205,36 +195,26 @@ router.post("/getToken", (req, res) => {
 										}).catch(() => { });
 									} else {
 
-										// This generates a new token for the user.
-										// They should be careful doing this because it will remove any existing tokens.
-										// So they'll be logged out on all devices.
-
 										handleToken(userID).then((token) => {
 											res.send({ token });
 										});
 									}
 								}).catch(() => {
-
-									// get timestamp from verification table
+									
 									queryString = "SELECT timestamp, id FROM verification WHERE userID = ?";
 									queryParams = [userID];
 
 									query(queryString, queryParams).then((rows) => {
 										if (rows.length > 0) {
-
-											// if it's been more than 2 minutes, resend the verification email
-
-											// could consider sending a new code instead of the same one
-											// but it's not that important
+											
 											if ((Date.now() - rows[0].timestamp) > 120000) {
 												sendVerificationEmail(email, rows[0].id);
-
-												// update timestamp
+												
 												const sql = "UPDATE verification SET timestamp = ? WHERE userID = ?";
 												const params = [Date.now(), userID];
 
 												executeStatement(sql, params).then().catch((err) => {
-													console.error(err);
+													error(err);
 												});
 											}
 
@@ -244,7 +224,7 @@ router.post("/getToken", (req, res) => {
 												note: "This account must be verified before it can be used."
 											});
 
-										} else { // logically, this should never hrouteren
+										} else { 
 											res.status(500).send({
 												webStatus: "INTERNAL_SERVER_ERROR",
 												error: "Something went wrong."
@@ -308,22 +288,21 @@ router.post("/shorthandToken", (req, res) => {
 	}
 
 	getUserID(token).then((userID) => {
-
-		// check for existing shorthand token
+		
 		Object.keys(shorthandTokens).forEach(shorthandToken => {
 			if (shorthandTokens[shorthandToken][0] === userID) {
-				// delete the existing shorthand token
+				
 				clearTimeout(shorthandTokens[shorthandToken][1]);
 				delete shorthandTokens[shorthandToken];
 			}
 		});
 
 		if (!req.body.empty) {
-			// generate a 5 character shorthand token
+			
 			const shorthandToken = uuidv4().substring(0, 5);
 			res.send({ shorthandToken });
 
-			var timeout = setTimeout(() => { // in 2 minutes, delete the shorthand token
+			var timeout = setTimeout(() => { 
 				delete shorthandTokens[shorthandToken];
 			}, 120000);
 
@@ -333,7 +312,7 @@ router.post("/shorthandToken", (req, res) => {
 		}
 
 	}).catch((err) => {
-		console.error(err);
+		error(err);
 		res.status(401).send({
 			error: "Invalid token."
 		});

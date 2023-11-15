@@ -7,7 +7,7 @@ const bcrypt = require("bcrypt");
 const validator = require("email-validator");
 const { v4: uuidv4 } = require("uuid");
 
-const { CONSTANTS, shorthandTokens, ROOT_DIRECTORY } = require("../../shared.js");
+const { CONSTANTS, shorthandTokens, ROOT_DIRECTORY, error } = require("../../shared.js");
 const { getUserID, changePassword, handleToken, checkIfEmailIsVerified, getToken, getUserIDFromEmail, userIsNotResettingEmail } = require("../../userAuthentication.js");
 const { query, executeStatement } = require("../../database.js");
 const { sendPasswordResetEmail, sendVerificationEmail } = require("../../emailFunctions.js");
@@ -50,7 +50,7 @@ router.post("/changePassword", (req, res) => {
 							note: "Password changed."
 						});
 					}, (err) => {
-						console.error(err);
+						error(err);
 						return res.status(500).send({
 							error: "Something went wrong."
 						});
@@ -70,7 +70,7 @@ router.post("/changePassword", (req, res) => {
 
 				bcrypt.compare(oldPassword, hashedPassword, function (err, result) {
 					if (err) {
-						console.error(err);
+						error(err);
 						return res.status(500).send({
 							error: "Something went wrong."
 						});
@@ -83,7 +83,7 @@ router.post("/changePassword", (req, res) => {
 									note: "Password changed."
 								});
 							}, (err) => {
-								console.error(err);
+								error(err);
 								return res.status(500).send({
 									error: "Something went wrong."
 								});
@@ -150,7 +150,7 @@ router.post("/deleteAccount", (req, res) => {
 						queryParams = [userID];
 
 						executeStatement(queryString, queryParams).then().catch((err) => {
-							console.error(err);
+							error(err);
 							res.status(500).send({
 								error: "Something went very wrong."
 							});
@@ -159,7 +159,7 @@ router.post("/deleteAccount", (req, res) => {
 						queryString = "DELETE FROM verification WHERE userID = ?";
 
 						executeStatement(queryString, queryParams).then().catch((err) => {
-							console.error(err);
+							error(err);
 							res.status(500).send({
 								error: "Something went very wrong."
 							});
@@ -168,7 +168,7 @@ router.post("/deleteAccount", (req, res) => {
 						queryString = "DELETE FROM user WHERE id = ?";
 
 						executeStatement(queryString, queryParams).then().catch((err) => {
-							console.error(err);
+							error(err);
 							res.status(500).send({
 								error: "Something went very wrong."
 							});
@@ -264,7 +264,7 @@ router.post("/forgotPassword", (req, res) => {
 					}
 				});
 			}).catch((err) => {
-				console.error(err);
+				error(err);
 				// could be an edge case where user has lost verification email and wants to reset password
 				// might consider sending verification email here in the future
 				return res.status(401).send({
@@ -337,14 +337,14 @@ router.post("/verifyEmail", (req, res) => {
 										});
 
 									}).catch((err) => {
-										console.error(err);
+										error(err);
 										res.status(500).send({
 											error: "Something went wrong."
 										});
 									});
 
 								}).catch((err) => {
-									console.error(err);
+									error(err);
 									res.status(500).send({
 										error: "Something went wrong."
 									});
@@ -356,7 +356,7 @@ router.post("/verifyEmail", (req, res) => {
 									res.send({ token });
 								}).catch((err) => {
 
-									console.error(err);
+									error(err);
 									return res.status(500).send({
 										error: "Something went wrong."
 									});
@@ -364,21 +364,21 @@ router.post("/verifyEmail", (req, res) => {
 								});
 							}
 						}).catch((err) => {
-							console.error(err);
+							error(err);
 							return res.status(500).send({
 								error: "Something went wrong."
 							});
 						});
 
 					}).catch((err) => {
-						console.error(err);
+						error(err);
 						res.status(500).send({
 							error: "Something went wrong."
 						});
 					});
 
 				}).catch((err) => {
-					console.error(err);
+					error(err);
 					res.status(500).send({
 						error: "Something went wrong."
 					});
@@ -421,11 +421,11 @@ router.post("/changeEmail", (req, res) => {
 		checkIfEmailIsVerified(userID).then(() => {
 
 			userIsNotResettingEmail(userID).then(() => {
-				console.log("User not in the middle of password reset.");
+				// let queryString = "UPDATE user SET verified = 0, email = ?"; // WHERE id = ?
 
-				let queryString = "UPDATE user SET verified = 0, email = ?"; // WHERE id = ?
-
-				let queryParams = [newEmail];
+				// update email at this point AND set verified to 0
+				let queryString = "UPDATE user SET email = ?, verified = ? WHERE id = ?";
+				let queryParams = [newEmail, 0, userID];
 
 				executeStatement(queryString, queryParams).then(() => {
 
@@ -465,23 +465,23 @@ router.post("/changeEmail", (req, res) => {
 									});
 
 								}).catch((err) => {
-									console.error(err);
+									error(err);
 								});
 
 							}).catch((err) => {
-								console.error(err);
+								error(err);
 							});
 
 						});
 
 					}).catch((err) => {
-						console.error(err);
+						error(err);
 						res.status(500).send({
 							error: "Something went wrong."
 						});
 					});
 				}).catch((err) => {
-					console.error(err);
+					error(err);
 					res.status(500).send({
 						error: "Something went wrong."
 					});
@@ -493,7 +493,7 @@ router.post("/changeEmail", (req, res) => {
 						error: "You can't change your email while you're in the middle of a password reset. You need to set a password first."
 					});
 				} else {
-					console.error(err);
+					error(err);
 					res.status(500).send({
 						error: "Something went wrong."
 					});
@@ -502,14 +502,14 @@ router.post("/changeEmail", (req, res) => {
 
 		}).catch((err) => {
 
-			console.error(err);
+			error(err);
 			res.status(500).send({
 				error: "Something went wrong."
 			});
 
 		});
 	}).catch((err) => {
-		console.error(err);
+		error(err);
 		res.status(403).send({
 			error: "Can't change email while email is unverified."
 		});

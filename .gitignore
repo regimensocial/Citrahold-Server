@@ -7,3 +7,5 @@
 *.crt
 *.key
 /emailTransporterConfig.json
+/config.json
+console.log
