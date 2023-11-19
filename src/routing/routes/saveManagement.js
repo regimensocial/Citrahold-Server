@@ -11,9 +11,9 @@ const { CONSTANTS, ROOT_DIRECTORY, error } = require("../../shared.js");
 const { getUserID } = require("../../userAuthentication");
 const { getUserDataUsage, ensureDirectoryExistence, dirSize, getFiles } = require("../../helpers.js");
 
-router.post([ "/uploadExtdata", "/uploadSaves"], (req, res) => {
+router.post(["/uploadSaves", "/uploadExtdata"], (req, res) => {
 
-	const isGetSaves = req.originalUrl.startsWith("/uploadSaves");
+	const isGetSaves = req.originalUrl.toLowerCase().startsWith("/uploadsaves");
 	const folder = isGetSaves ? "saves" : "extdata";
 
 	if (!req.body.filename || typeof req.body.filename !== "string" || req.body.filename.startsWith(".") || req.body.filename.length > CONSTANTS.MAX_PATH_LENGTH) {
@@ -74,6 +74,7 @@ router.post([ "/uploadExtdata", "/uploadSaves"], (req, res) => {
 					userID,
 					req.body.filename
 				));
+
 				fs.writeFile(path.resolve(
 					ROOT_DIRECTORY,
 					folder,
@@ -91,7 +92,7 @@ router.post([ "/uploadExtdata", "/uploadSaves"], (req, res) => {
 							success: true,
 							message: "The file was saved! Thank you"
 						});
-						
+
 						var game = req.body.filename.split("/")[0];
 						var gameDir = path.resolve(ROOT_DIRECTORY, folder, userID, game);
 						var currentDate = new Date();
@@ -121,7 +122,7 @@ router.post([ "/uploadExtdata", "/uploadSaves"], (req, res) => {
 
 router.post(["/getSaves/:game?", "/getExtdata/:game?"], (req, res) => {
 
-	const isGetSaves = req.originalUrl.startsWith("/getSaves");
+	const isGetSaves = req.originalUrl.toLowerCase().startsWith("/getsaves");
 	const folder = isGetSaves ? "saves" : "extdata";
 
 	const token = req.body.token;
@@ -132,7 +133,7 @@ router.post(["/getSaves/:game?", "/getExtdata/:game?"], (req, res) => {
 		});
 		return;
 	}
-	
+
 	var game = req.body.game || req.params.game;
 
 	if (game && typeof game !== "string") {
@@ -144,7 +145,7 @@ router.post(["/getSaves/:game?", "/getExtdata/:game?"], (req, res) => {
 
 	getUserID(token).then((userID) => {
 		const location = path.resolve(ROOT_DIRECTORY, folder, userID);
-		
+
 		if (!game) {
 			fs.readdir(location, async (err, files) => {
 				if (err) {
@@ -186,7 +187,7 @@ router.post(["/getSaves/:game?", "/getExtdata/:game?"], (req, res) => {
 				});
 				return;
 			}
-			
+
 			fs.lstat(gameLocation, (err, stats) => {
 				if (err) {
 					res.status(404).send({
@@ -228,7 +229,7 @@ router.post(["/getSaves/:game?", "/getExtdata/:game?"], (req, res) => {
 });
 
 router.post(["/deleteSaves/:game?", "/deleteExtdata/:game?"], (req, res) => {
-	const isDeleteSaves = req.originalUrl.startsWith("/deleteSaves");
+	const isDeleteSaves = req.originalUrl.toLowerCase().startsWith("/deletesaves");
 	const folder = isDeleteSaves ? "saves" : "extdata";
 	const token = req.body.token;
 
@@ -292,7 +293,7 @@ router.post(["/deleteSaves/:game?", "/deleteExtdata/:game?"], (req, res) => {
 });
 
 router.post(["/renameSaves", "/renameExtdata"], (req, res) => {
-	const isRenameSaves = req.originalUrl.startsWith("/renameSaves");
+	const isRenameSaves = req.originalUrl.toLowerCase().startsWith("/renamesaves");
 	const folder = isRenameSaves ? "saves" : "extdata";
 	const token = req.body.token;
 
@@ -368,7 +369,7 @@ router.post(["/renameSaves", "/renameExtdata"], (req, res) => {
 
 router.use(["/downloadSaves*", "/downloadExtdata*"], (req, res) => {
 	const token = req.body.token;
-	const isGetSaves = req.originalUrl.startsWith("/downloadSaves");
+	const isGetSaves = req.originalUrl.toLowerCase().startsWith("/downloadsaves");
 	const folder = isGetSaves ? "saves" : "extdata";
 
 	if (!token || typeof token !== "string") {
@@ -379,7 +380,7 @@ router.use(["/downloadSaves*", "/downloadExtdata*"], (req, res) => {
 	}
 
 	getUserID(token).then((userID) => {
-		let location = req.originalUrl.split(isGetSaves ? "/downloadSaves/" : "/downloadExtdata/")[1];
+		let location = req.originalUrl.toLowerCase().split(isGetSaves ? "/downloadsaves/" : "/downloadextdata/")[1];
 
 		if (req.body.game || req.body.save || req.body.file) {
 

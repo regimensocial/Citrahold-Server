@@ -13,12 +13,6 @@ const cookieChecker = (req, res, next) => {
 
 	if (!req.body || typeof req.body !== "object") {
 		req.body = {};
-	} else {
-		if ((JSON.stringify(req.body) || "").length > 67108864) {
-			return res.status(413).send({
-				error: "Request body too large."
-			});
-		}
 	}
 
 	if (!req.body.token && ((req.cookies && req.cookies["token"] && req.cookies["token"].length) || (req.signedCookies && req.signedCookies["token"] && req.signedCookies["token"].length))) {
