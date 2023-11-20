@@ -549,4 +549,75 @@ router.use(["/downloadSaves*", "/downloadExtdata*"], (req, res) => {
 	});
 });
 
+router.use(["/downloadMultiSaves*", "/downloadMultiExtdata*"], (req, res) => {
+	const token = req.body.token;
+	const isGetSaves = req.originalUrl.toLowerCase().startsWith("/downloadmultisaves");
+	const folder = isGetSaves ? "saves" : "extdata";
+
+	if (!token || typeof token !== "string") {
+		res.status(400).send({
+			error: "Invalid token."
+		});
+		return;
+	}
+
+	getUserID(token).then((userID) => {
+		let location = req.originalUrl.toLowerCase().split(isGetSaves ? "/downloadsaves/" : "/downloadextdata/")[1];
+
+		if (req.body.game || req.body.save || req.body.file) {
+
+			if (req.body.game && typeof req.body.game !== "string" || req.body.save && typeof req.body.save !== "string" || req.body.file && typeof req.body.file !== "string") {
+				res.status(400).send({
+					error: "Invalid game, save or file."
+				});
+				return;
+			}
+
+			location = path.join(ROOT_DIRECTORY, folder, userID, (req.body.game || ""), (req.body.file || ""));
+		} else {
+			location = decodeURIComponent(location);
+			location = location.split("/");
+			location = path.resolve(ROOT_DIRECTORY, folder, userID, ...location);
+		}
+
+		if (!location.startsWith(path.resolve(ROOT_DIRECTORY, folder, userID))) {
+			res.status(400).send({
+				error: "Stop."
+			});
+			return;
+		}
+
+		fs.lstat(location, (err, stats) => {
+			if (err) {
+				res.status(404).send({
+					error: "File not found."
+				});
+			} else {
+				if (stats.isDirectory()) {
+					var allFiles = [];
+					getFiles(location)
+						.then(files => {
+							files.forEach(file => {
+								const fileAsBase64 = fs.readFileSync(file, { encoding: "base64" });
+								file = file.split(location + "/")[1];
+								allFiles.push([file, fileAsBase64]);
+							});
+
+							res.json({
+								files: allFiles
+							});
+
+						})
+						.catch(e => error(e));
+				}
+			}
+		});
+
+	}).catch(() => {
+		res.status(401).send({
+			error: "Invalid token."
+		});
+	});
+});
+
 module.exports = router;
