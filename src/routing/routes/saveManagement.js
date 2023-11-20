@@ -120,6 +120,115 @@ router.post(["/uploadSaves", "/uploadExtdata"], (req, res) => {
 	}
 });
 
+router.post(["/uploadMultiSaves", "/uploadMultiExtdata"], (req, res) => {
+
+	const isGetSaves = req.originalUrl.toLowerCase().startsWith("/uploadmultisaves");
+	const folder = isGetSaves ? "saves" : "extdata";
+
+	if (!req.body.token || typeof req.body.token !== "string") {
+		res.status(400).send({
+			error: "Invalid token."
+		});
+		return;
+	}
+
+	// make sure req.body.multi is an array 
+	if (!req.body.multi || (req.body.multi && !Array.isArray(req.body.multi))) {
+		return res.status(400).send({
+			error: "Invalid request. You didn't send a valid array."
+		});
+	}
+
+	getUserID(req.body.token).then(async (userID) => {
+
+		req.body.multi.map(async (file, index) => {
+			let filename = file[0];
+			const data = file[1];
+
+			var game = filename.split("/")[0];
+			var gameDir = path.resolve(ROOT_DIRECTORY, folder, userID, game);
+
+			if (index == 0 && fs.existsSync(gameDir)) fs.rmSync(gameDir, { recursive: true, force: true });
+
+			if (!path.resolve(
+				ROOT_DIRECTORY,
+				folder,
+				userID,
+				filename
+			).startsWith(path.resolve(ROOT_DIRECTORY, folder, userID))) {
+				res.status(400).send({
+					error: "Stop."
+				});
+				return;
+			}
+
+			try {
+
+				var buf = Buffer.from(data, "base64");
+
+				const userDirectorySize = await getUserDataUsage(userID);
+
+				if (userDirectorySize + (buf.length / 1024) > (SERVER_CONFIG.maxUserDirSize)) {
+
+					return res.status(507).send({
+						error: "You have exceeded your storage limit."
+					});
+				}
+
+				filename = filename.trim();
+
+				ensureDirectoryExistence(path.resolve(
+					ROOT_DIRECTORY,
+					folder,
+					userID,
+					filename
+				));
+
+				fs.writeFile(path.resolve(
+					ROOT_DIRECTORY,
+					folder,
+					userID,
+					filename
+				), buf, "binary", function (err) {
+					if (err) {
+						error(err);
+						res.status(500).send({
+							error: "Something went wrong."
+						});
+
+					} else {
+
+						fs.utimes(gameDir, fs.statSync(gameDir).mtime, (new Date()), (err) => {
+							if (err) {
+								error(err);
+							}
+						});
+					}
+				});
+
+			} catch (e) {
+				res.status(500).send({
+					error: "Something went wrong."
+				});
+				return;
+			}
+
+		});
+
+		return res.status(201).send({
+			success: true,
+			message: "The file was saved! Thank you"
+		});
+
+	}).catch(() => {
+		res.status(401).send({
+			error: "Invalid token."
+		});
+		return;
+	});
+
+});
+
 router.post(["/getSaves/:game?", "/getExtdata/:game?"], (req, res) => {
 
 	const isGetSaves = req.originalUrl.toLowerCase().startsWith("/getsaves");
