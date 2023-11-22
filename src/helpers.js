@@ -83,10 +83,30 @@ async function getUserDataUsage(userID) {
 
 }
 
+function isValidFilename(filename) {
+    return !(
+        filename.startsWith("/") ||
+        filename.includes("\\") ||
+        filename.includes("?") ||
+        filename.includes(":") ||
+        filename.includes("*") ||
+        filename.includes("\"") ||
+        filename.includes("<") ||
+        filename.includes(">") ||
+        filename.includes("..") ||
+        filename.includes("|") ||
+        filename === "CON" ||
+        filename === "PRN" ||
+        filename === "AUX" ||
+        filename === "NUL"
+    );
+}
+
 module.exports = {
     dirSize,
     generateRandomNumberString,
     getFiles,
     ensureDirectoryExistence,
-    getUserDataUsage
+    getUserDataUsage,
+    isValidFilename
 };

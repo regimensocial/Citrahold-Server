@@ -9,14 +9,14 @@ const SERVER_CONFIG = require("../../../config.json");
 const { CONSTANTS, ROOT_DIRECTORY, error } = require("../../shared.js");
 
 const { getUserID } = require("../../userAuthentication");
-const { getUserDataUsage, ensureDirectoryExistence, dirSize, getFiles } = require("../../helpers.js");
+const { getUserDataUsage, ensureDirectoryExistence, dirSize, getFiles, isValidFilename } = require("../../helpers.js");
 
 router.post(["/uploadSaves", "/uploadExtdata"], (req, res) => {
 
 	const isGetSaves = req.originalUrl.toLowerCase().startsWith("/uploadsaves");
 	const folder = isGetSaves ? "saves" : "extdata";
 
-	if (!req.body.filename || typeof req.body.filename !== "string" || req.body.filename.startsWith(".") || req.body.filename.length > CONSTANTS.MAX_PATH_LENGTH) {
+	if (!req.body.filename || typeof req.body.filename !== "string" || req.body.filename.startsWith(".") || req.body.filename.length > CONSTANTS.MAX_PATH_LENGTH || !isValidFilename(req.body.filename.trim())) {
 		res.status(400).send({
 			error: "Invalid request. You didn't send a valid filename."
 		});
@@ -75,34 +75,42 @@ router.post(["/uploadSaves", "/uploadExtdata"], (req, res) => {
 					req.body.filename
 				));
 
-				fs.writeFile(path.resolve(
-					ROOT_DIRECTORY,
-					folder,
-					userID,
-					req.body.filename
-				), buf, "binary", function (err) {
-					if (err) {
-						error(err);
-						res.status(500).send({
-							error: "Something went wrong."
-						});
-
-					} else {
-						res.status(201).send({
-							success: true,
-							message: "The file was saved! Thank you"
-						});
-
-						var game = req.body.filename.split("/")[0];
-						var gameDir = path.resolve(ROOT_DIRECTORY, folder, userID, game);
-						var currentDate = new Date();
-						fs.utimes(gameDir, fs.statSync(gameDir).mtime, currentDate, (err) => {
-							if (err) {
-								error(err);
-							}
-						});
-					}
-				});
+				try {
+					fs.writeFile(path.resolve(
+						ROOT_DIRECTORY,
+						folder,
+						userID,
+						req.body.filename
+					), buf, "binary", function (err) {
+						if (err) {
+							error(err);
+							res.status(500).send({
+								error: "Something went wrong."
+							});
+	
+						} else {
+							res.status(201).send({
+								success: true,
+								message: "The file was saved! Thank you"
+							});
+	
+							var game = req.body.filename.split("/")[0];
+							var gameDir = path.resolve(ROOT_DIRECTORY, folder, userID, game);
+							var currentDate = new Date();
+							fs.utimes(gameDir, fs.statSync(gameDir).mtime, currentDate, (err) => {
+								if (err) {
+									error(err);
+								}
+							});
+						}
+					});
+				} catch (e) {
+					error(e);
+					res.status(500).send({
+						error: "Something went wrong."
+					});
+					return;
+				}
 
 			} catch (e) {
 				res.status(500).send({
@@ -141,8 +149,13 @@ router.post(["/uploadMultiSaves", "/uploadMultiExtdata"], (req, res) => {
 
 	getUserID(req.body.token).then(async (userID) => {
 
+		let processed = 0;
+
 		req.body.multi.map(async (file, index) => {
-			let filename = file[0];
+
+			if (res.headersSent) return;
+
+			const filename = file[0].trim();
 			const data = file[1];
 
 			var game = filename.split("/")[0];
@@ -156,68 +169,104 @@ router.post(["/uploadMultiSaves", "/uploadMultiExtdata"], (req, res) => {
 				userID,
 				filename
 			).startsWith(path.resolve(ROOT_DIRECTORY, folder, userID))) {
-				res.status(400).send({
+				if (!res.headersSent) res.status(400).send({
 					error: "Stop."
 				});
 				return;
-			}
+			} else {
 
-			try {
+				if (filename.length > CONSTANTS.MAX_PATH_LENGTH) {
 
-				var buf = Buffer.from(data, "base64");
-
-				const userDirectorySize = await getUserDataUsage(userID);
-
-				if (userDirectorySize + (buf.length / 1024) > (SERVER_CONFIG.maxUserDirSize)) {
-
-					return res.status(507).send({
-						error: "You have exceeded your storage limit."
+					if (!res.headersSent) res.status(400).send({
+						error: "Invalid request. You didn't send a valid filename."
 					});
-				}
+					return;
+				} else {
+					try {
 
-				filename = filename.trim();
+						console.log(filename, data);
 
-				ensureDirectoryExistence(path.resolve(
-					ROOT_DIRECTORY,
-					folder,
-					userID,
-					filename
-				));
+						if (data && typeof data == "string") {
+							var buf = Buffer.from(data, "base64");
 
-				fs.writeFile(path.resolve(
-					ROOT_DIRECTORY,
-					folder,
-					userID,
-					filename
-				), buf, "binary", function (err) {
-					if (err) {
-						error(err);
-						res.status(500).send({
+							const userDirectorySize = await getUserDataUsage(userID);
+
+							if (userDirectorySize + (buf.length / 1024) > (SERVER_CONFIG.maxUserDirSize)) {
+								if (!res.headersSent) res.status(507).send({
+									error: "You have met your storage limit."
+								});
+							} else {
+
+								if (isValidFilename(filename)) {
+									ensureDirectoryExistence(path.resolve(
+										ROOT_DIRECTORY,
+										folder,
+										userID,
+										filename
+									));
+
+									try {
+										fs.writeFile(path.resolve(
+											ROOT_DIRECTORY,
+											folder,
+											userID,
+											filename
+										), buf, "binary", function (err) {
+											if (err) {
+												error(err);
+
+												if (!res.headersSent) res.status(500).send({
+													error: "Something went wrong."
+												});
+												return;
+
+											} else {
+												processed++;
+												fs.utimes(gameDir, fs.statSync(gameDir).mtime, (new Date()), (err) => {
+													if (err) {
+														error(err);
+													}
+												});
+												if (processed == req.body.multi.length) {
+													if (!res.headersSent) res.status(201).send({
+														success: true,
+														message: "The files were saved! Thank you"
+													});
+												}
+											}
+										});
+									} catch (e) {
+										if (!res.headersSent) res.status(500).send({
+											error: "Something went wrong."
+										});
+										return;
+									}
+								} else {
+									console.log("Invalid filename");
+									if (!res.headersSent) res.status(400).send({
+										error: "Invalid request. You didn't send a valid filename."
+									});
+									return;
+								}
+							}
+						} else {
+							if (!res.headersSent) res.status(400).send({
+								error: "Invalid request. You didn't send valid data."
+							});
+							return;
+						}
+
+					} catch (e) {
+						error(e);
+						if (!res.headersSent) res.status(500).send({
 							error: "Something went wrong."
 						});
-
-					} else {
-
-						fs.utimes(gameDir, fs.statSync(gameDir).mtime, (new Date()), (err) => {
-							if (err) {
-								error(err);
-							}
-						});
+						return;
 					}
-				});
+				}
 
-			} catch (e) {
-				res.status(500).send({
-					error: "Something went wrong."
-				});
-				return;
 			}
 
-		});
-
-		return res.status(201).send({
-			success: true,
-			message: "The file was saved! Thank you"
 		});
 
 	}).catch(() => {
