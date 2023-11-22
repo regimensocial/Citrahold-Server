@@ -184,8 +184,6 @@ router.post(["/uploadMultiSaves", "/uploadMultiExtdata"], (req, res) => {
 				} else {
 					try {
 
-						console.log(filename, data);
-
 						if (data && typeof data == "string") {
 							var buf = Buffer.from(data, "base64");
 
@@ -242,7 +240,6 @@ router.post(["/uploadMultiSaves", "/uploadMultiExtdata"], (req, res) => {
 										return;
 									}
 								} else {
-									console.log("Invalid filename");
 									if (!res.headersSent) res.status(400).send({
 										error: "Invalid request. You didn't send a valid filename."
 									});
