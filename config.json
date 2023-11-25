@@ -4,7 +4,12 @@
     "verifyEmail": true,
     "frontEnd": "http://localhost:3001",
     "passwordResetPage": "/passwordReset.html?",
-    "allowedOrigins": ["http://localhost:3000", "http://localhost:3001", "https://localhost:3444", "https://citrahold.regimen.social"],
+    "allowedOrigins": [
+        "http://localhost:3000",
+        "http://localhost:3001",
+        "https://localhost:3444",
+        "https://citrahold.regimen.social"
+    ],
     "bcryptSaltRounds": 10,
     "securePort": 3443,
     "insecurePort": 3000,

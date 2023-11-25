@@ -8,7 +8,7 @@ const fs = require("fs");
 const http = require("http");
 const https = require("https");
 
-const { ROOT_DIRECTORY, log } = require("./shared.js");
+const { ROOT_DIRECTORY, log, error } = require("./shared.js");
 const { resolve } = require("path");
 
 const privateKey = fs.readFileSync(resolve(ROOT_DIRECTORY, "selfsigned.key"), "utf8");
@@ -36,11 +36,34 @@ module.exports = () => {
 			credentials: true,
 		}
 	));
+
 	app.use(express.json({ limit: (((SERVER_CONFIG.maxUserDirSize || 128000) / 1024) + "mb") }));
 	app.use(express.urlencoded({ extended: true, limit: (((SERVER_CONFIG.maxUserDirSize || 128000) / 1024) + "mb") }));
+
+	// Custom error handling middleware
+	app.use((err, _req, res, next) => {
+		if (err instanceof SyntaxError && err.status === 413) {
+			error(err);
+			res.status(413).json({ error: "The request payload exceeds the allowed limit." });
+		} else {
+			next();
+		}
+	});
+
 	app.use(cookieParser());
 	app.use(jsonChecker);
 	app.use(cookieChecker);
+
+	app.all("/softwareVersion", (_req, res) => {
+		fs.readFile(resolve(ROOT_DIRECTORY, "softwareVersions.json"), (err, data) => {
+			if (err) {
+				error(err);
+				res.status(500).json({ error: "Something went wrong." });
+			} else {
+				res.status(200).json(JSON.parse(data));
+			}
+		});
+	});
 
 	[accessRoute, accountManagementRoute, areyouawakeRoute, saveManagementRoute, webRoute].forEach((route) => {
 		app.use("/", route);
@@ -57,5 +80,9 @@ module.exports = () => {
 		httpsServer.listen(SERVER_CONFIG.securePort);
 		log("Citrahold Server (secure) open on port " + SERVER_CONFIG.securePort + ".");
 	}
+
+	app.use ((req, res) => {
+		res.status(404).json({ error: "Not Found", message: "The requested resource was not found." });
+	});
 
 };

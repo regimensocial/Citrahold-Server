@@ -11,10 +11,6 @@ const jsonChecker = (err, _req, res, next) => {
 
 const cookieChecker = (req, res, next) => {
 
-	if (!req.body || typeof req.body !== "object") {
-		req.body = {};
-	}
-
 	if (!req.body.token && ((req.cookies && req.cookies["token"] && req.cookies["token"].length) || (req.signedCookies && req.signedCookies["token"] && req.signedCookies["token"].length))) {
 		var token = req.cookies["token"] || req.signedCookies["token"];
 

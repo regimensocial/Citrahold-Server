@@ -87,13 +87,13 @@ router.post(["/uploadSaves", "/uploadExtdata"], (req, res) => {
 							res.status(500).send({
 								error: "Something went wrong."
 							});
-	
+
 						} else {
 							res.status(201).send({
 								success: true,
 								message: "The file was saved! Thank you"
 							});
-	
+
 							var game = req.body.filename.split("/")[0];
 							var gameDir = path.resolve(ROOT_DIRECTORY, folder, userID, game);
 							var currentDate = new Date();
@@ -188,11 +188,13 @@ router.post(["/uploadMultiSaves", "/uploadMultiExtdata"], (req, res) => {
 							var buf = Buffer.from(data, "base64");
 
 							const userDirectorySize = await getUserDataUsage(userID);
-
 							if (userDirectorySize + (buf.length / 1024) > (SERVER_CONFIG.maxUserDirSize)) {
-								if (!res.headersSent) res.status(507).send({
-									error: "You have met your storage limit."
-								});
+								if (!res.headersSent) {
+									res.status(507).send({
+										error: "You have met your storage limit."
+									});
+								}
+								return;
 							} else {
 
 								if (isValidFilename(filename)) {
@@ -230,6 +232,7 @@ router.post(["/uploadMultiSaves", "/uploadMultiExtdata"], (req, res) => {
 														success: true,
 														message: "The files were saved! Thank you"
 													});
+													return;
 												}
 											}
 										});
@@ -381,6 +384,60 @@ router.post(["/getSaves/:game?", "/getExtdata/:game?"], (req, res) => {
 		});
 	});
 
+});
+
+router.post(["/getSavesLastUpdated", "/getExtdataLastUpdated"], (req, res) => {
+	const isGetSavesLastUpdated = req.originalUrl.toLowerCase().startsWith("/getsaveslastupdated");
+	const folder = isGetSavesLastUpdated ? "saves" : "extdata";
+	const token = req.body.token;
+
+	if (!token || typeof token !== "string") {
+		res.status(400).send({
+			error: "Invalid token."
+		});
+		return;
+	}
+
+	var game = req.body.game || req.params.game;
+
+	if (!game || typeof game !== "string") {
+		res.status(400).send({
+			error: "I need a game."
+		});
+		return;
+	}
+
+	getUserID(token).then((userID) => {
+		const gameLocation = path.resolve(ROOT_DIRECTORY, folder, userID, game);
+		if (!gameLocation.startsWith(path.resolve(ROOT_DIRECTORY, folder, userID))) {
+			res.status(400).send({
+				error: "Stop."
+			});
+			return;
+		}
+
+		if (!fs.existsSync(gameLocation)) {
+			res.status(404).send({
+				error: "Game not found."
+			});
+			return;
+		} else {
+			fs.lstat(gameLocation, (err, stats) => {
+				if (err) {
+					res.status(404).send({
+						error: "File not found."
+					});
+				} else {
+
+					const lastModified = stats.mtime.toISOString();
+					res.json({
+						lastModified
+					});
+					return;
+				}
+			});
+		}
+	});
 });
 
 router.post(["/deleteSaves/:game?", "/deleteExtdata/:game?"], (req, res) => {

@@ -96,6 +96,12 @@ if (!fs.existsSync("./config.json")) {
     fs.writeFileSync("./config.json", JSON.stringify(defaultConfig, null, 4));
 }
 
+if (!fs.existsSync("./softwareVersions.json")) {
+    fs.writeFileSync("./softwareVersions.json", JSON.stringify({
+        "3ds": "1.0.0", "pc": "1.0.1"
+    }, null, 4));
+}
+
 if (!fs.existsSync("./emailTransporterConfig.json")) {
     fs.writeFileSync("./emailTransporterConfig.json", JSON.stringify(defaultEmailTransporterConfig, null, 4));
 }
