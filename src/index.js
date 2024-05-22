@@ -19,7 +19,7 @@ const SERVER_CONFIG = require("../config.json");
 
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
-const { jsonChecker, cookieChecker } = require("./routing/middleware.js");
+const { jsonChecker, cookieChecker, usageLogger } = require("./routing/middleware.js");
 
 const accessRoute = require("./routing/routes/access.js");
 const accountManagementRoute = require("./routing/routes/accountManagement.js");
@@ -53,6 +53,7 @@ module.exports = () => {
 	app.use(cookieParser());
 	app.use(jsonChecker);
 	app.use(cookieChecker);
+	app.use(usageLogger);
 
 	app.all("/softwareVersion", (_req, res) => {
 		fs.readFile(resolve(ROOT_DIRECTORY, "softwareVersions.json"), (err, data) => {

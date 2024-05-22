@@ -9,11 +9,15 @@ const logFilePath = join(ROOT_DIRECTORY, "console.log");
 const logStream = createWriteStream(logFilePath, { flags: "a" });
 
 const log = (message) => {
+    const timestamp = new Date().toISOString();
+    message = `[${timestamp}] ${message}`;
     console.log(message);
     logStream.write(message + "\n");
 };
 
 const error = (message) => {
+    const timestamp = new Date().toISOString();
+    message = `[${timestamp}] ${message}`;
     console.error(message);
     logStream.write("[ERROR]" + message + "\n");
 };

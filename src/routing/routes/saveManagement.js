@@ -437,6 +437,10 @@ router.post(["/getSavesLastUpdated", "/getExtdataLastUpdated"], (req, res) => {
 				}
 			});
 		}
+	}).catch(() => {
+		res.status(401).send({
+			error: "Invalid token."
+		});
 	});
 });
 

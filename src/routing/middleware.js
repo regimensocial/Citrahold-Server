@@ -1,3 +1,4 @@
+const { log } = require("../shared");
 const { getUserID } = require("../userAuthentication");
 
 const jsonChecker = (err, _req, res, next) => {
@@ -31,7 +32,23 @@ const cookieChecker = (req, res, next) => {
 	}
 };
 
+const usageLogger = async (req, _res, next) => {
+	let userID = "notLoggedIn";
+	const ip = req.headers["x-forwarded-for"] || req.socket.remoteAddress;
+	if (req.body.token && typeof req.body.token === "string") {
+		await getUserID(req.body.token).then((id) => {
+			userID = id;
+		}).catch(() => {
+		});
+	}
+
+	log(`${ip} (${userID}) | ${req.originalUrl} | ${req.get("User-Agent")}`);
+	
+	next();
+};
+
 module.exports = {
 	jsonChecker,
-	cookieChecker
+	cookieChecker,
+	usageLogger
 };
