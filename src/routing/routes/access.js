@@ -16,6 +16,15 @@ const { executeStatement, query } = require("../../database");
 const { sendVerificationEmail, sendPasswordResetEmail } = require("../../emailFunctions");
 const { generateRandomNumberString } = require("../../helpers");
 
+const startTime = new Date();
+
+router.all("/", (req, res) => {
+	res.status(200).send({
+		message: "Citrahold API v1.0.2(?)",
+		uptime: startTime.toISOString()
+	});
+});
+
 router.post("/register", (req, res) => {
 
 	let email = req.body.email;
