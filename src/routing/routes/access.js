@@ -20,7 +20,7 @@ const startTime = new Date();
 
 router.all("/", (req, res) => {
 	res.status(200).send({
-		message: "Citrahold API v1.0.2(?)",
+		message: "Citrahold API",
 		uptime: startTime.toISOString()
 	});
 });
