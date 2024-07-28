@@ -5,4 +5,4 @@ It's written in JavaScript with Node.js and Express.js because this was the simp
 
 **If you are planning on just using Citrahold, you can ignore this repo. You just need [Citrahold-3DS](https://github.com/regimensocial/Citrahold-3DS) and [Citrahold-PC](https://github.com/regimensocial/citraholdUI/)!**
 
-Proper README coming soon
+I wish I wrote this in TypeScript...
